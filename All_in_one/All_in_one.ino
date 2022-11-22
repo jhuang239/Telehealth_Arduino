@@ -378,7 +378,7 @@ void read_max30100_hr() {
 void read_max30100_temp() {
   temp_max30100_setup();
   oled_max30100_temp();
-  temperature = 0.0;
+  temperature = 36.5;
   uint32_t starttime = millis();
   int count = 0;
   while ((millis() - starttime) <= 30000) {
@@ -402,7 +402,7 @@ void read_max30100_temp() {
       }
     }
   }
-  temperature = temperature / count;
+  temperature = temperature / (count+1);
   sensor.shutdown();
 }
 
@@ -435,6 +435,7 @@ void unpack(String jsonMessage) {
     Serial.println(blood_pressure_high);
     Serial.print("bpl: ");
     Serial.println(blood_pressure_low);
+    delay(3000);
 
     oled_section("MAX30100_temp");
     while (digitalRead(13) != LOW) {
@@ -496,9 +497,9 @@ void ecg_measuremnt() {
       a = 0;
       lasta = a;
     }
-//    while ((digitalRead(9) == 1) || (digitalRead(8) == 1)) {
-//      Serial.println('!');
-//    }
+    while ((digitalRead(9) == 1) || (digitalRead(8) == 1)) {
+      Serial.println('!');
+    }
     int value = analogRead(A5);
     if (clicked) {
       ecgArr[i] = value;
