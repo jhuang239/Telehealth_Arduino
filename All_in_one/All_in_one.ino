@@ -323,15 +323,17 @@ void read_max30100_spo2() {
 void read_max30100_hr() {
   hr_spo2_max30100_setup();
   oled_max30100();
-  heartbeat = 0.0;
+  heartbeat = 50.0;
   uint32_t starttime = millis();
-  int count = 0;
+  int count = 1;
   while ((millis() - starttime) <= 30000) {
     pox.update();
     if (millis() - tsLastReading > REPORTING_PERIOD_MS) {
       float value = pox.getHeartRate();
-      heartbeat += value;
-      count++;
+      if (value > 50) {
+        heartbeat += value;
+        count++;
+      }
       display.setCursor(0, 40);
       display.print("Heart rate:      bpm");
       display.setCursor(70, 40);
