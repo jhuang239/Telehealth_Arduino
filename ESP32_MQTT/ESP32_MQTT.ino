@@ -11,6 +11,7 @@
 const char* ssid = "Kim";
 const char* password = "Kim.W?0591";
 
+//certificate of our backend
 const char* root_ca = \
                       "-----BEGIN CERTIFICATE-----\n" \
                       "MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\n" \
@@ -44,9 +45,11 @@ const char* outTopic = "EE3070GP2/outTopic";
 const String clienteId = "ESP32EE3070MQTT";
 uint16_t keepAlive = 600;
 
+//esp client and pubsubclient declaration 
 WiFiClient espClient;
 PubSubClient clientMqtt(espClient);
 
+//mqtt reconnect
 void reconnect() {
   while (!clientMqtt.connected()) {
     Serial.print("\nConnecting to ");
@@ -65,6 +68,7 @@ void reconnect() {
   }
 }
 
+//call back function once the message received
 void callback(char* topic, byte* payload, unsigned int length) {
   String s_topic = String(topic);
   String message = "";
@@ -88,6 +92,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+//unpack the message from mega2560
 boolean unpackBackMessage(String jsonMessage) {
   StaticJsonDocument<6144> doc;
   DeserializationError error = deserializeJson(doc, jsonMessage);
@@ -104,6 +109,7 @@ boolean unpackBackMessage(String jsonMessage) {
   }
 }
 
+//upload function to upload data to database
 void upload(String jsonData) {
   if ((WiFi.status() == WL_CONNECTED) && jsonData.length() > 0) {
     HTTPClient http;
@@ -121,6 +127,7 @@ void upload(String jsonData) {
   }
 }
 
+//function that pack the command before send to mega2560
 String packJson(String username) {
   String output;
   StaticJsonDocument<64> doc;
