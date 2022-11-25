@@ -74,6 +74,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     for (int i = 0; i < length; i++) {
       message += String((char)payload[i]);
     }
+    Serial.println(message);
     String jsonData = packJson(message);
     Serial2.flush();
     Serial2.println(jsonData);

@@ -1,3 +1,4 @@
+//libraries
 #include <ArduinoJson.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -6,22 +7,24 @@
 #include <dht.h>
 #include <MAX30100_PulseOximeter.h>
 
+//define oled display
 #define OLED_I2C_ADDR 0x3C
-
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET -1 // SSD1306 doesn't have a reset pin
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+//define dht pin and variable
 #define dht_pin A7 //dht pin
 dht DHT;
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
+//define max30100 sensor variable and time period
 #define REPORTING_PERIOD_MS     1000
 MAX30100 sensor;
 PulseOximeter pox;
 uint32_t tsLastReading = 0;
 
+//user health data
 int blood_pressure_high;
 int blood_pressure_low;
 float temperature;
@@ -31,6 +34,7 @@ float room_temperature;
 float humidity;
 int ecgArr[128];
 
+//received message from ESP32
 String message = "";
 
 //blood_pressure monitor
@@ -46,6 +50,7 @@ int a = 0;
 int lasta = 0;
 int lastb = 0;
 
+//configuration for max30100 module
 void configureMax30100() {
   sensor.setMode(MAX30100_MODE_SPO2_HR);
   sensor.setLedsCurrent(MAX30100_LED_CURR_50MA, MAX30100_LED_CURR_27_1MA);
@@ -54,28 +59,28 @@ void configureMax30100() {
   sensor.setHighresModeEnabled(true);
 }
 
-void read_DHT() {
-  oled_DHT();
-  room_temperature = 0;
-  humidity = 0;
-  int count = 0;
-  uint32_t starttime = millis();
-  while ((millis() - starttime) <= 30000) {
-    DHT.read11(dht_pin);
-    display.setCursor(74, 24);
-    display.print(DHT.temperature);
-    display.setCursor(70, 50);
-    display.print(DHT.humidity);
-    display.display();
-    room_temperature += DHT.temperature;
-    humidity += DHT.humidity;
-    count++;
+//max30100 temperature setup
+void temp_max30100_setup() {
+  if (!sensor.begin()) {
+    Serial.println("FAILED");
+    for (;;);
+  } else {
+    Serial.println("SUCCESS");
   }
-  room_temperature = room_temperature / count;
-  humidity = humidity / count;
+  configureMax30100();
 }
 
+//max30100 hr and spo2 setup
+void hr_spo2_max30100_setup() {
+  if (!pox.begin()) {
+    Serial.println("FAILED");
+    for (;;);
+  } else {
+    Serial.println("SUCCESS");
+  }
+}
 
+//setup oled
 void setupOLED(void) {
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR)) { // Address 0x3C for SSD1306 128x64
@@ -84,6 +89,23 @@ void setupOLED(void) {
   }
 }
 
+//oled setup for DHT11
+void oled_DHT() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE, BLACK);
+  display.setCursor(0, 0);
+  display.cp437(true);
+  display.println("DHT measuring");
+  display.setCursor(0, 24);
+  display.print("Temperature:       C");
+  display.setCursor(0, 50);
+  display.print("Humidity:          %");
+  display.display();
+  delay(500);
+}
+
+//oled setup for blood pressure
 void oled_blood_pressure() {
   display.clearDisplay();
   display.setTextSize(1); // Normal 1:1 pixel scale
@@ -105,6 +127,7 @@ void oled_blood_pressure() {
   delay(2000);
 }
 
+//oled setup for welcom message
 void oled_welcome() {
   display.clearDisplay();
   display.setTextSize(2);
@@ -118,56 +141,9 @@ void oled_welcome() {
   delay(2000);
 }
 
-void oled_DHT() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE, BLACK);
-  display.setCursor(0, 0);
-  display.cp437(true);
-  display.println("DHT measuring");
-  display.setCursor(0, 24);
-  display.print("Temperature:       C");
-  display.setCursor(0, 50);
-  display.print("Humidity:          %");
-  display.display();
-  delay(500);
-}
 
-void setup() {
-  Serial.begin(9600);
-  Serial1.begin(115200);
 
-  pinMode(12, INPUT_PULLUP); //Button B record Diastolic pressure
-  pinMode(13, INPUT_PULLUP); //Button A -record Systolic pressure
-
-  //ecg
-  pinMode(9, INPUT); //+
-  pinMode(8, INPUT); //-
-
-  setupOLED();
-  oled_welcome();
-  //configureMax30100();
-}
-
-void temp_max30100_setup() {
-  if (!sensor.begin()) {
-    Serial.println("FAILED");
-    for (;;);
-  } else {
-    Serial.println("SUCCESS");
-  }
-  configureMax30100();
-}
-
-void hr_spo2_max30100_setup() {
-  if (!pox.begin()) {
-    Serial.println("FAILED");
-    for (;;);
-  } else {
-    Serial.println("SUCCESS");
-  }
-}
-
+//display instruction of how to use ECG module
 void oled_ecg_instruction() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -203,6 +179,7 @@ void oled_ecg_instruction() {
   display.display();
 }
 
+//oled display instruction of blood pressure monitor
 void oled_blood_pressure_instruction() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -249,6 +226,7 @@ void oled_blood_pressure_instruction() {
   display.display();
 }
 
+//oled display instruction of dht11 and max30100
 void oled_section(String section) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -277,34 +255,8 @@ void oled_section(String section) {
   }
 }
 
-void oled_max30100_temp() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE, BLACK);
-  display.setCursor(0, 0);
-  display.cp437(true);
-  display.println("MAX30100 measuring");
-  display.setCursor(0, 40);
-  display.print("Temperature:       C");
-
-  delay(500);
-}
-
-void oled_max30100_spo2() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE, BLACK);
-  display.setCursor(0, 0);
-  display.cp437(true);
-  display.println("MAX30100 measuring");
-  //  display.setCursor(0, 20);
-  //  display.print("Heart rate:      bpm");
-  //  display.setCursor(0, 40);
-  //  display.print("Spo2:          %");
-  display.display();
-}
-
-void oled_max30100_hr() {
+//oled display max30100 measurement.
+void oled_max30100() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE, BLACK);
@@ -314,17 +266,38 @@ void oled_max30100_hr() {
   display.display();
 }
 
+//read data from DHT11
+void read_DHT() {
+  oled_DHT();
+  room_temperature = 0;
+  humidity = 0;
+  int count = 0;
+  uint32_t starttime = millis();
+  while ((millis() - starttime) <= 30000) {
+    DHT.read11(dht_pin);
+    display.setCursor(74, 24);
+    display.print(DHT.temperature);
+    display.setCursor(70, 50);
+    display.print(DHT.humidity);
+    display.display();
+    room_temperature += DHT.temperature;
+    humidity += DHT.humidity;
+    count++;
+  }
+  room_temperature = room_temperature / count;
+  humidity = humidity / count;
+}
+
+//read spo2 value from max30100
 void read_max30100_spo2() {
   hr_spo2_max30100_setup();
-  oled_max30100_spo2();
+  oled_max30100();
   blood_oxygen = 0;
   uint32_t starttime = millis();
   int count = 0;
   while ((millis() - starttime) <= 30000) {
     pox.update();
     if (millis() - tsLastReading > REPORTING_PERIOD_MS) {
-      //      display.setCursor(70, 20);
-      //      display.print(pox.getHeartRate());
       int value = pox.getSpO2();
       display.setCursor(0, 40);
       display.print("Spo2:          %");
@@ -335,8 +308,6 @@ void read_max30100_spo2() {
         blood_oxygen += value;
         count++;
       }
-      //      Serial.print("Heart rate:");
-      //      Serial.print(pox.getHeartRate());
       Serial.print("SpO2:");
       Serial.print(pox.getSpO2());
       Serial.println("%");
@@ -348,9 +319,10 @@ void read_max30100_spo2() {
   pox.shutdown();
 }
 
+//read heart rate from max30100
 void read_max30100_hr() {
   hr_spo2_max30100_setup();
-  oled_max30100_hr();
+  oled_max30100();
   heartbeat = 0.0;
   uint32_t starttime = millis();
   int count = 0;
@@ -361,7 +333,7 @@ void read_max30100_hr() {
       heartbeat += value;
       count++;
       display.setCursor(0, 40);
-      display.print("Hear rate:       bpm");
+      display.print("Heart rate:      bpm");
       display.setCursor(70, 40);
       display.print(value);
       display.display();
@@ -375,9 +347,10 @@ void read_max30100_hr() {
   pox.shutdown();
 }
 
+//read body temperature from max30100
 void read_max30100_temp() {
   temp_max30100_setup();
-  oled_max30100_temp();
+  oled_max30100();
   temperature = 36.5;
   uint32_t starttime = millis();
   int count = 0;
@@ -387,6 +360,8 @@ void read_max30100_temp() {
       sensor.startTemperatureSampling();
       if (sensor.isTemperatureReady()) {
         float temp = sensor.retrieveTemperature();
+        display.setCursor(0, 40);
+        display.print("Temperature:       C");
         display.setCursor(74, 40);
         display.print(temp);
         display.display();
@@ -402,13 +377,12 @@ void read_max30100_temp() {
       }
     }
   }
-  temperature = temperature / (count+1);
+  temperature = temperature / (count + 1);
   sensor.shutdown();
 }
 
+//unpack the json message from ESP32
 void unpack(String jsonMessage) {
-
-  //String usr_name = "testing";//testing without username
   StaticJsonDocument<96> doc;
   DeserializationError error = deserializeJson(doc, jsonMessage);
   if (error) {
@@ -419,7 +393,6 @@ void unpack(String jsonMessage) {
   String command = doc["command"];
   String username = doc["username"];
   if (command == "start_meausre") {
-
     oled_section("DHT");
     read_DHT();
     Serial.print("Temperature: ");
@@ -429,6 +402,7 @@ void unpack(String jsonMessage) {
 
     oled_blood_pressure_instruction();
     while (digitalRead(13) != LOW) {
+      //break the loop after user press the push button A
     }
     blood_pressure();
     Serial.print("bph: ");
@@ -439,6 +413,7 @@ void unpack(String jsonMessage) {
 
     oled_section("MAX30100_temp");
     while (digitalRead(13) != LOW) {
+      //break the loop after user press the push button A
     }
     read_max30100_temp();
     Serial.print("Temperature: ");
@@ -446,30 +421,32 @@ void unpack(String jsonMessage) {
 
     oled_section("MAX30100_spo2");
     while (digitalRead(13) != LOW) {
+      //break the loop after user press the push button A
     }
     read_max30100_spo2();
+    Serial.print("Blood Oxygen: ");
+    Serial.print(blood_oxygen);
+
 
     oled_section("MAX30100_hr");
     while (digitalRead(13) != LOW) {
+      //break the loop after user press the push button A
     }
     read_max30100_hr();
-
-    Serial.print("heart rate: ");
+    Serial.print("Hear Rate: ");
     Serial.print(heartbeat);
-    Serial.print("spo2: ");
-    Serial.print(blood_oxygen);
 
     oled_ecg_instruction();
     while (digitalRead(13) != LOW) {
+      //break the loop after user press the push button A
     }
     ecg_measuremnt();
 
-    //    for (int i = 0; i < 128; i++) {
-    //      Serial.print(i + 1);
-    //      Serial.print(": ");
-    //      Serial.println(ecgArr[i]);
-    //    }
-    //display.clearDisplay();
+    Serial.print("ECG: ");
+    for (int i = 0; i < 128; i++) {
+      Serial.print(ecgArr[i]);
+      Serial.print(", ");
+    }
 
     String packJson = packData(username);
     delay(3000);
@@ -478,11 +455,11 @@ void unpack(String jsonMessage) {
     Serial1.flush();
     Serial1.println(packJson);
     message = "";
-    //oled wellcome message
     oled_welcome();
   }
 }
 
+//measure the ecg
 void ecg_measuremnt() {
   display.clearDisplay();
   int i = 0;
@@ -498,7 +475,7 @@ void ecg_measuremnt() {
       lasta = a;
     }
     while ((digitalRead(9) == 1) || (digitalRead(8) == 1)) {
-      Serial.println('!');
+      Serial.println("please stick the tips well on your body");
     }
     int value = analogRead(A5);
     if (clicked) {
@@ -521,41 +498,7 @@ void ecg_measuremnt() {
   }
 }
 
-String packData(String username) {
-  Serial.println("packing");
-  String jsonMessage;
-
-  StaticJsonDocument<1536> obj;
-  obj["command"] = "upload";
-  obj["username"] = username;
-  obj["blood_pressure_high"] = blood_pressure_high;
-  obj["blood_pressure_low"] = blood_pressure_low;
-  obj["temperature"] = temperature;
-  obj["blood_oxygen"] = blood_oxygen;
-  obj["heartbeat"] = heartbeat;
-  obj["room_temperature"] = room_temperature;
-  obj["humidity"] = humidity;
-  JsonArray ecg = obj.createNestedArray("ecgData");
-  for (int i = 0; i < 128; i++) {
-    Serial.print("packing ecgData: ");
-    Serial.println(i + 1);
-    ecg.add(ecgArr[i]);
-  }
-  serializeJson(obj, jsonMessage);
-  return jsonMessage;
-}
-
-
-void loop() {
-  while (Serial1.available() > 0) {
-    message = Serial1.readString();
-    if (message.length() > 0) {
-      Serial.println(message);
-      unpack(message);
-    }
-  }
-}
-
+//measure the blood pressure
 void blood_pressure() {
   oled_blood_pressure();
   blood_pressure_high = 0;
@@ -615,5 +558,55 @@ void blood_pressure() {
       blood_pressure_low = val_bp;
     }
     delay(20);
+  }
+}
+
+//pack all the measurred data into json object
+String packData(String username) {
+  Serial.println("packing");
+  String jsonMessage;
+
+  StaticJsonDocument<1536> obj;
+  obj["command"] = "upload";
+  obj["username"] = username;
+  obj["blood_pressure_high"] = blood_pressure_high;
+  obj["blood_pressure_low"] = blood_pressure_low;
+  obj["temperature"] = temperature;
+  obj["blood_oxygen"] = blood_oxygen;
+  obj["heartbeat"] = heartbeat;
+  obj["room_temperature"] = room_temperature;
+  obj["humidity"] = humidity;
+  JsonArray ecg = obj.createNestedArray("ecgData");
+  for (int i = 0; i < 128; i++) {
+    Serial.print("packing ecgData: ");
+    Serial.println(i + 1);
+    ecg.add(ecgArr[i]);
+  }
+  serializeJson(obj, jsonMessage);
+  return jsonMessage;
+}
+
+void setup() {
+  Serial.begin(9600);
+  Serial1.begin(115200);
+
+  pinMode(12, INPUT_PULLUP); //Button B record Diastolic pressure
+  pinMode(13, INPUT_PULLUP); //Button A -record Systolic pressure
+
+  //ecg
+  pinMode(9, INPUT); //+
+  pinMode(8, INPUT); //-
+
+  setupOLED();
+  oled_welcome();
+}
+
+void loop() {
+  while (Serial1.available() > 0) {
+    message = Serial1.readString();
+    if (message.length() > 0) {
+      Serial.println(message);
+      unpack(message);
+    }
   }
 }
