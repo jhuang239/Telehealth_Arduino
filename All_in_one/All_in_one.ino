@@ -286,6 +286,12 @@ void read_DHT() {
   }
   room_temperature = room_temperature / count;
   humidity = humidity / count;
+  display.setCursor(74, 24);
+  display.print(room_temperature);
+  display.setCursor(70, 50);
+  display.print(humidity);
+  display.display();
+  delay(5000);
 }
 
 //read spo2 value from max30100
@@ -317,6 +323,12 @@ void read_max30100_spo2() {
   }
   blood_oxygen = blood_oxygen / count;
   pox.shutdown();
+  display.setCursor(0, 40);
+  display.print("Spo2:          %");
+  display.setCursor(70, 40);
+  display.print(blood_oxygen);
+  display.display();
+  delay(5000);
 }
 
 //read heart rate from max30100
@@ -347,6 +359,12 @@ void read_max30100_hr() {
   }
   heartbeat = heartbeat / count;
   pox.shutdown();
+  display.setCursor(0, 40);
+  display.print("Heart rate:      bpm");
+  display.setCursor(70, 40);
+  display.print(heartbeat);
+  display.display();
+  delay(5000);
 }
 
 //read body temperature from max30100
@@ -369,7 +387,7 @@ void read_max30100_temp() {
         display.display();
         Serial.print("Temperature = ");
         Serial.print(temp);
-        Serial.println("*C | ");
+        Serial.println("*C");
 
         tsLastReading = millis();
         if (temp > 35.00) {
@@ -381,6 +399,12 @@ void read_max30100_temp() {
   }
   temperature = temperature / (count + 1);
   sensor.shutdown();
+  display.setCursor(0, 40);
+  display.print("Temperature:       C");
+  display.setCursor(74, 40);
+  display.print(temperature);
+  display.display();
+  delay(5000);
 }
 
 //unpack the json message from ESP32
@@ -411,7 +435,7 @@ void unpack(String jsonMessage) {
     Serial.println(blood_pressure_high);
     Serial.print("bpl: ");
     Serial.println(blood_pressure_low);
-    delay(3000);
+    delay(5000);
 
     oled_section("MAX30100_temp");
     while (digitalRead(13) != LOW) {
